@@ -1,0 +1,144 @@
+name: "Build - Check & Clippy"
+on:
+  push:
+    branches:
+      - master
+      - main
+env:
+  preview: ${{ github.event_name == 'release' && contains(github.event.release.tag_name, 'preview') }}
+  on_schedule: "false"
+  # RUSTC_WRAPPER: sccache
+  RUSTC_WRAPPER: sccache
+  CACHE_VERSION: v1
+  SCCACHE_VERSION: 0.10.0
+  SCCACHE_GHA_ENABLED: true
+  CARGO_INCREMENTAL: 0
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: 1
+  PROJECT_NAME: rust_template
+jobs:
+  check:
+    name: "Build - check"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            gcc: gcc-x86-64-linux-gnu
+            rust: nightly
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            rust: nightly
+    runs-on: ${{ matrix.os }}
+    env:
+      RUSTC_WRAPPER: sccache
+      CACHE_VERSION: v1
+      SCCACHE_VERSION: 0.10.0
+    if: "!contains(github.event.head_commit.message, 'skip ci')"
+    steps:
+      - name: "Checkout sources"
+        uses: actions/checkout@master
+      - name: "Setup sccache"
+        uses: mozilla-actions/sccache-action@v0.0.9
+      - name: "Install cargo tools"
+        uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-binstall,cargo-make,just,taplo
+      - name: "Cache Cargo dependencies"
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-all-crates: true
+      - uses: actions/cache@v4
+        with:
+          key: ${{ runner.os }}-${{ env.CACHE_VERSION }}-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            ~/.cargo/sccache/
+            ~/.rustup/
+            target/
+          restore-keys: |
+            ${{ runner.os }}-${{ github.workflow }}-${{ env.CACHE_VERSION }}-${{ github.job }}-
+            ${{ runner.os }}-${{ github.workflow }}-${{ env.CACHE_VERSION }}
+      # - name: "Setup sccache"
+      #   uses: mozilla-actions/sccache-action@v0.0.9
+      - name: "Install gcc"
+        if: matrix.gcc != ''
+        run: sudo apt update && sudo apt install -yq ${{ matrix.gcc }}
+      # - name: "Install cargo-binstall"
+      # uses: cargo-bins/cargo-binstall@main
+      - name: "Setup Rust toolchain"
+        run: rustup toolchain install nightly --profile default --target ${{ matrix.target }} --no-self-update
+      - name: "Ensure nightly rustfmt installed"
+        run: rustup component add rustfmt --toolchain nightly
+      - name: "Run Cargo fmt"
+        run: cargo +nightly fmt --all
+      - name: "Run Cargo check"
+        run: cargo check
+      - name: "Run Clippy with pedantic"
+        run: cargo clippy --all-targets --all-features -- -W clippy::pedantic
+      - name: "Build project"
+        run: cargo build --release --all
+  clippy:
+    name: "Build - clippy"
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            gcc: gcc-x86-64-linux-gnu
+            rust: nightly
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            rust: nightly
+    runs-on: ${{ matrix.os }}
+    env:
+      RUSTC_WRAPPER: sccache
+      # RUSTC_WRAPPER: "/home/runner/.cargo/bin/sccache"
+      CACHE_VERSION: v1
+      SCCACHE_VERSION: 0.10.0
+    if: "!contains(github.event.head_commit.message, 'skip ci')"
+    steps:
+      - name: "Checkout sources"
+        uses: actions/checkout@master
+      - name: "Cache Cargo dependencies"
+        uses: Swatinem/rust-cache@v2
+      - uses: actions/cache@v4
+        with:
+          key: ${{ runner.os }}-${{ env.CACHE_VERSION }}-${{ hashFiles('**/Cargo.toml', '**/Cargo.lock') }}
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            ~/.cargo/sccache/
+            ~/.rustup/
+            target/
+          restore-keys: |
+            ${{ runner.os }}-${{ github.workflow }}-${{ env.CACHE_VERSION }}-${{ github.job }}-
+            ${{ runner.os }}-${{ github.workflow }}-${{ env.CACHE_VERSION }}
+      # - name: "Setup sccache"
+      #   uses: mozilla-actions/sccache-action@v0.0.9
+      # - name: "Setup sccache"
+      #   uses: mozilla-actions/sccache-action@v0.0.9
+      - name: "Install gcc"
+        if: matrix.gcc != ''
+        run: sudo apt update && sudo apt install -yq ${{ matrix.gcc }}
+      - name: "Install cargo-binstall"
+        uses: cargo-bins/cargo-binstall@main
+      - name: "Install sccache via cargo-binstall"
+        run: cargo binstall -y sccache@${{ env.SCCACHE_VERSION }}
+      - name: "Setup Rust toolchain"
+        run: rustup toolchain install nightly --profile default --target ${{ matrix.target }} --no-self-update
+      - name: "Ensure nightly rustfmt installed"
+        run: rustup component add rustfmt --toolchain nightly
+      - name: "Run Cargo fmt"
+        run: cargo +nightly fmt --all
+      - name: "Run Clippy with pedantic"
+        run: cargo clippy --all-targets --all-features -- -W clippy::pedantic
+      - name: "Build project"
+        run: cargo build --release --all
