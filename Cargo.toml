@@ -1,0 +1,140 @@
+cargo-features = [ "codegen-backend", "profile-rustflags", "trim-paths" ]
+# cargo-features = ["profile-rustflags", "trim-paths"] # required for both trimming paths and setting rustflags
+# The aboe also needs the profile.dev to be uncommented to use the cranelift backend
+[package]
+name        = "logon_logger_rs"
+version     = "0.1.0"
+authors     = [ "MrDwarf7", "Blake B. <github.com/MrDwarf7>" ]
+edition     = "2024"
+description = "Idiomatic Rust port of the admin classic PowerShell logon logger – async, composable, trait-driven."
+# license = "MIT"
+license-file = "LICENSE"
+readme       = "README.md"
+
+[[bin]]
+name = "logon_logger"
+path = "src/main.rs"
+# For running the main server as a watch, call
+# cargo watch -q -c -w src/ -x run
+
+######################################################################################################################################################
+######################################################################################################################################################
+
+
+# [package.metadata.winresource]
+# OriginalFilename = "csv_parser_rs.exe"
+# FileDescription = "A CLI tool to parse a CSV file and filter out rows based on a set of criteria."
+# LegalCopyright = "Copyright © 2025 by Blake B. @github.com/MrDwarf7"
+# #CompanyName = "https://github.com/MrDwarf7"
+#
+# [target.'cfg(windows)'.build-dependencies]
+# windres = "0.2"
+#
+# [build-dependencies]
+# winresource = "0.1.19"
+# windres = "0.2.2"
+# winapi = { version = "0.3.9" }
+
+######################################################################################################################################################
+######################################################################################################################################################
+
+
+[dependencies]
+chrono          = { version = "0.4.42", features = [ "clock" ] }
+calamine        = "0.32.0"
+rust_xlsxwriter = { version = "0.92.2", features = [ "chrono" ] }
+wmi             = { version = "0.18.0" }
+serde           = { version = "1.0.228", features = [ "derive" ] }
+tokio           = { version = "1.48.0", features = [ "full" ] }
+
+# Errors
+eyre      = { version = "0.6.12" }
+thiserror = "2.0.17"
+
+# Logging and tracing
+tracing            = "0.1.44"
+tracing-subscriber = { version = "0.3.22", features = [ "ansi", "chrono", "env-filter", "serde", "std" ] }
+
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.55.0"
+
+# serde_json = "*"
+
+# clap = "*"
+# anstyle = "*"
+
+# reqwest = { version = "*", features = ["cookies", "json", "multipart", "stream"] }
+# uuid = { version = "*", features = ["v4"] }
+
+# toml = "*"
+# dirs = "*" # Useful to get XDG spec dirs
+
+# async-trait = "*"
+# static-toml = "*"
+# walkdir = "*"
+# itertools = "*"
+
+
+######################################################################################################################################################
+######################################################################################################################################################
+
+## See `./.cargo_options.toml` for options & brief details & directions
+
+[profile.dev]
+opt-level        = 1
+codegen-units    = 256
+incremental      = true
+rustflags        = [ "-Zthreads=16" ]
+codegen-backend  = "cranelift"
+debug            = "line-tables-only"
+debug-assertions = true
+overflow-checks  = true
+strip            = "none"             # true | false | "none" | "symbols" | "debuginfo" ## Leave off @ w. THIS IS NOT OBFUSCATION.
+panic            = "abort"            # "unwind" | "abort"
+lto              = "off"              # "false" ### # true | false | "off" | "thin" | "fat" ## Can't use with cranelift yet
+trim-paths       = "none"
+# tune-cpu         = "native"
+
+######################################################################################################################################################
+
+[profile.release]
+# rustflags        = [ "-Zthreads=16" ]
+opt-level        = 3
+codegen-units    = 1
+incremental      = false
+codegen-backend  = "cranelift" # May break deps.
+debug            = "none"
+debug-assertions = false
+overflow-checks  = false       # debatable
+
+# TODO: This likely needs to be turned off in workplace/corporate environments that have a binary hash scanning policy.
+strip      = "symbols"                   # true | false | "none" | "symbols" | "debuginfo" ## Leave off @ w. THIS IS NOT OBFUSCATION.
+panic      = "unwind"
+lto        = "off"                       # true | false | "off" | "thin" | "fat" ## Can't use with cranelift yet
+trim-paths = [ "diagnostics", "object" ]
+# tune-cpu         = "native"
+
+
+[profile.dev.package."*"]
+inherits        = "release"
+codegen-backend = "cranelift" #### May break deps. for external crates
+
+[profile.release.package."*"]
+inherits        = "release"
+codegen-backend = "cranelift" #### May break deps. for external crates??????
+
+######################################################################################################################################################
+######################################################################################################################################################
+
+# Lint levels / priorities/priority
+# 0 = forbid
+# 1 = deny
+# 2 = warn
+# 3 = allow
+[lints.rust]
+unsafe_code = { level = "forbid", priority = 0 }
+# unsafe_code = "forbid"
+
+[lints.clippy]
+enum_glob_use = { level = "warn", priority = 2 }
