@@ -1,7 +1,7 @@
 use calamine::{Data, DataType};
 use chrono::{DateTime, Local, TimeZone};
+use rust_xlsxwriter::ExcelDateTime;
 use rust_xlsxwriter::worksheet::Worksheet;
-use rust_xlsxwriter::{ExcelDateTime, IntoDataValidationValue};
 
 use crate::collect::{BaseInfo, HardwareInfo, OsInfo};
 use crate::period::{PERIODS, get_current_period};
@@ -66,6 +66,7 @@ impl ExcelLoggable for WorkStationEntry {
     ];
 
     fn write_entry(&self, ws: &mut Worksheet, row: u32) -> Result<()> {
+        #[allow(unused_imports)]
         use rust_xlsxwriter::Format;
 
         let fields = [
@@ -98,7 +99,7 @@ impl ExcelLoggable for WorkStationEntry {
 
         // HACK: [dirty] : Extremely dirty way to handle this lol...
         // Can be cleaned up if we're okay with having the DT at the end of the columns in the sheet
-        ws.write_datetime(row, 4, &edt)?;
+        ws.write_datetime(row, 2, &edt)?;
 
         Ok(())
     }
