@@ -114,7 +114,7 @@ pub async fn collect_hardware() -> Result<HardwareInfo> {
         use serde::{Deserialize, Serialize};
         use winreg::RegKey;
         use winreg::enums::*;
-        use wmi::{COMLibrary, WMIConnection};
+        use wmi::WMIConnection;
 
         // let com = COMLibrary::new()?;
         let wmi_con = WMIConnection::new()?;
