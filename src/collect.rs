@@ -34,8 +34,14 @@ impl BaseInfo {
 }
 
 pub async fn collect_base_info(executor: &PsExecutor) -> Result<BaseInfo> {
-    let computer_name = std::env::var("COMPUTERNAME")?; // .to_uppercase();
-    let logon_name = std::env::var("USERNAME")?; // .to_uppercase();
+    // TODO: [correctness] : We should be uppercasing these,
+    // left them as is due to original script. Consider uppercasing as a way to normalise the data.
+    let computer_name = std::env::var("COMPUTERNAME")
+        .map_err(|_| crate::Error::Generic("COMPUTERNAME env var not found".to_string()))?; // .to_uppercase();
+
+    let logon_name = std::env::var("USERNAME")
+        .map_err(|_| crate::Error::Generic("USERNAME env var not found".to_string()))?; // .to_uppercase();
+
     let now = Local::now();
 
     let user_dn_cmd =
@@ -47,6 +53,11 @@ pub async fn collect_base_info(executor: &PsExecutor) -> Result<BaseInfo> {
 
     let (user_dn, comp_dn) = tokio::try_join!(executor.execute(user_dn_cmd), executor.execute(comp_dn_cmd))
         .map_err(|e| crate::Error::Generic(format!("Failed to get DN: {}", e)))?;
+
+    // HACK: [brittle] : This is _extremely_ brittle,
+    // if the structure of the output changes, this _WILL_ break.
+    // perhaps Regex? (though questionable...), parsing it properly
+    // would be much safer and resilient...
 
     let username = user_dn
         .split(',')
@@ -165,17 +176,18 @@ impl OsInfo {
 }
 
 pub async fn collect_os_info() -> Result<OsInfo> {
-    #[cfg(not(target_os = "windows"))]
-    {
-        unimplemented!("OS info collection is only implemented for Windows");
-    }
     #[cfg(target_os = "windows")]
-    tokio::task::spawn_blocking(|| {
+    return tokio::task::spawn_blocking(|| {
         let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
         let cur = hklm.open_sub_key_with_flags(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", KEY_READ)?;
         let os: String = cur.get_value("ProductName")?;
         let os_version: String = cur.get_value("DisplayVersion").unwrap_or_default();
         Ok(OsInfo::new(os_version, os))
     })
-    .await?
+    .await?;
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        unimplemented!("OS info collection is only implemented for Windows");
+    }
 }

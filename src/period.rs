@@ -30,6 +30,8 @@ pub const fn hms(h: u32, m: u32) -> chrono::NaiveTime {
     chrono::NaiveTime::from_hms_opt(h, m, 0).unwrap()
 }
 
+// TODO: [trait] : We should do this via Trait + blank structs
+// Which will be better as adding a 'new' period would be easier via ( new struct + impl Trait )
 pub const PERIODS: [TimePeriod; 9] = [
     TimePeriod::new(hms(5, 0), hms(8, 45), false, "Before School"),
     TimePeriod::new(hms(8, 45), hms(8, 55), false, "Form"),
@@ -42,14 +44,17 @@ pub const PERIODS: [TimePeriod; 9] = [
     TimePeriod::new(hms(14, 55), hms(5, 0), true, "After Hours"),
 ];
 
-pub(crate) fn get_current_period(now: &DateTime<chrono::Local>, periods: &[TimePeriod]) -> String {
+pub(crate) fn get_current_period(
+    now: &DateTime<chrono::Local>,
+    periods: &[TimePeriod],
+) -> Result<String, String> {
     let current = now.time();
 
     for period in periods.iter() {
         if period.contains(&current) {
-            return period.name.to_string();
+            return Ok(period.name.to_string());
         }
     }
 
-    "Unknown".to_string()
+    Err(format!("Current time {} does not fall into any defined period", current))
 }
