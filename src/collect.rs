@@ -183,6 +183,9 @@ impl OsInfo {
 pub async fn collect_os_info() -> Result<OsInfo> {
     #[cfg(target_os = "windows")]
     return tokio::task::spawn_blocking(|| {
+        use winreg::RegKey;
+        use winreg::enums::*;
+        use wmi::WMIConnection;
         let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
         let cur = hklm.open_sub_key_with_flags(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion", KEY_READ)?;
         let os: String = cur.get_value("ProductName")?;
