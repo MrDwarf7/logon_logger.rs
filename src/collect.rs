@@ -111,6 +111,11 @@ impl HardwareInfo {
 pub async fn collect_hardware() -> Result<HardwareInfo> {
     #[cfg(target_os = "windows")]
     return tokio::task::spawn_blocking(|| {
+        use serde::{Deserialize, Serialize};
+        use winreg::RegKey;
+        use winreg::enums::*;
+        use wmi::{COMLibrary, WMIConnection};
+
         let com = COMLibrary::new()?;
         let wmi_con = WMIConnection::new(com)?;
 
