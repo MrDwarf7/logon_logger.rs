@@ -116,8 +116,8 @@ pub async fn collect_hardware() -> Result<HardwareInfo> {
         use winreg::enums::*;
         use wmi::{COMLibrary, WMIConnection};
 
-        let com = COMLibrary::new()?;
-        let wmi_con = WMIConnection::new(com)?;
+        // let com = COMLibrary::new()?;
+        let wmi_con = WMIConnection::new()?;
 
         #[derive(Debug, Deserialize)]
         struct CS {
