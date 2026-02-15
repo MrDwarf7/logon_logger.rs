@@ -1,13 +1,13 @@
 use calamine::{Data, DataType};
 use chrono::{DateTime, Local, TimeZone};
-use rust_xlsxwriter::ExcelDateTime;
 use rust_xlsxwriter::worksheet::Worksheet;
+use rust_xlsxwriter::{ExcelDateTime, IntoDataValidationValue};
 
 use crate::collect::{BaseInfo, HardwareInfo, OsInfo};
 use crate::period::{PERIODS, get_current_period};
 use crate::{Error, ExcelLoggable, FieldLengsths, HasDateTime, Result};
 
-// TODO: @trait : Better to do this via like, S: FromStr or Into<str> or something
+// TODO: [trait] : Better to do this via like, S: FromStr or Into<str> or something
 #[derive(Clone)]
 pub struct WorkStationEntry {
     pub username:      String,
@@ -25,11 +25,11 @@ pub struct WorkStationEntry {
     pub serial_number: String,
 }
 
-impl From<(BaseInfo, HardwareInfo, OsInfo)> for WorkStationEntry {
-    fn from(value: (BaseInfo, HardwareInfo, OsInfo)) -> Self {
-        let (base, hardware, os) = value;
-        let now = chrono::Local::now();
-        let period_value = get_current_period(&now, &PERIODS);
+impl From<(BaseInfo, HardwareInfo, OsInfo, DateTime<Local>)> for WorkStationEntry {
+    fn from(value: (BaseInfo, HardwareInfo, OsInfo, DateTime<Local>)) -> Self {
+        let (base, hardware, os, now) = value;
+        // let now = chrono::Local::now();
+        let period_value = get_current_period(&now, &PERIODS).unwrap_or_else(|_| "Unknown".to_string());
         Self {
             username:      base.username,
             user_ou:       base.user_ou,
@@ -68,26 +68,43 @@ impl ExcelLoggable for WorkStationEntry {
     fn write_entry(&self, ws: &mut Worksheet, row: u32) -> Result<()> {
         use rust_xlsxwriter::Format;
 
+        let fields = [
+            &self.username,                   // 0
+            &self.user_ou,                    // 1
+            &String::from("__placeholder__"), // 2 &edt placeholder, overwritten by DT formatted col
+            &self.period,                     // 3
+            &self.description,                // 4
+            &self.ws_ou,                      // 5
+            &self.os_version,                 // 6
+            &self.model,                      // 7
+            &self.os,                         // 8
+            &self.full_ou,                    // 9
+            &self.make,                       // 10
+            &self.uuid,                       // 11
+            &self.serial_number,              // 12
+        ];
+
+        fields.iter().enumerate().for_each(|(i, field)| {
+            ws.write_string(row, i as u16, *field).unwrap_or_else(|e| {
+                panic!("Failed to write field {}: {}", Self::COLUMNS[i], e);
+            });
+        });
+
+        // convert the `edt` datetime from the string insertion format,
+        // back to a datetime by.... writing it again as an actual datetime
+
         let edt = ExcelDateTime::parse_from_str(&self.date_time.to_rfc3339())
             .map_err(|e| Error::Generic(format!("Failed to parse date time: {}", e)))?;
 
-        ws.write_string(row, 0, &self.username)?;
-        ws.write_string(row, 1, &self.user_ou)?;
-        ws.write_datetime(row, 2, &edt)?;
-        ws.write_string(row, 3, &self.period)?;
-        ws.write_string(row, 4, &self.description)?;
-        ws.write_string(row, 5, &self.ws_ou)?;
-        ws.write_string(row, 6, &self.os_version)?;
-        ws.write_string(row, 7, &self.model)?;
-        ws.write_string(row, 8, &self.os)?;
-        ws.write_string(row, 9, &self.full_ou)?;
-        ws.write_string(row, 10, &self.make)?;
-        ws.write_string(row, 11, &self.uuid)?;
-        ws.write_string(row, 12, &self.serial_number)?;
+        // HACK: [dirty] : Extremely dirty way to handle this lol...
+        // Can be cleaned up if we're okay with having the DT at the end of the columns in the sheet
+        ws.write_datetime(row, 4, &edt)?;
+
         Ok(())
     }
 
     fn parse_row(row: &[Data]) -> Option<Self> {
+        // NOTE: ?[maybe] : rows.len ??? or is it via columns len?
         if row.len() < 13 {
             return None;
         }
