@@ -6,6 +6,9 @@
 
 > An idiomatic Rust port of the classic PowerShell logon logging script – async, composable, and trait-driven.
 
+> [!IMPORTANT]
+> **WORK IN PROGRESS** – This project is currently in early development and was thrown together extremely quickly. As such, you may encounter some... unconventional... design choices. The codebase is functional but will undergo significant refactoring as it matures. Use in production environments at your own discretion, and expect breaking changes in future updates.
+
 ## Overview
 
 **logon_logger_rs** is a modern, high-performance replacement for legacy PowerShell-based logon logging scripts commonly used by IT administrators in educational environments. Originally designed for high school IT departments, this tool tracks user workstation logons by gathering comprehensive system and user information, then logging it to organized Excel files on a network share.
