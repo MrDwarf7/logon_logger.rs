@@ -17,4 +17,8 @@ pub enum Error {
 
     #[error("Environment variable error: {0}")]
     EnvironVarError(#[from] std::env::VarError),
+
+    #[cfg(target_os = "windows")]
+    #[error("Wmi error: {0}")]
+    WmiError(#[from] wmi::WMIError),
 }

@@ -128,10 +128,8 @@ jobs:
       - name: "Install gcc"
         if: matrix.gcc != ''
         run: sudo apt update && sudo apt install -yq ${{ matrix.gcc }}
-      - name: "Install cargo-binstall"
-        uses: cargo-bins/cargo-binstall@main
-      - name: "Install sccache via cargo-binstall"
-        run: cargo binstall -y sccache@${{ env.SCCACHE_VERSION }}
+      - name: "Setup sccache"
+        uses: mozilla-actions/sccache-action@v0.0.9
       - name: "Setup Rust toolchain"
         run: rustup toolchain install nightly --profile default --target ${{ matrix.target }} --no-self-update
       - name: "Ensure nightly rustfmt installed"
